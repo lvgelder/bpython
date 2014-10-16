@@ -15,6 +15,6 @@ class TestExecArgs(unittest.TestCase):
             print open(f.name).read()
             p = subprocess.Popen(['bpython-curtsies', f.name], stderr= subprocess.PIPE)
 
-            self.assertEquals(p.stderr.read().strip(), f.name)
+            self.assertEquals(p.stderr.read().strip().decode('ascii'), f.name)
 
 
