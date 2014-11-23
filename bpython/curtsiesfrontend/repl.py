@@ -462,7 +462,7 @@ class Repl(BpythonRepl):
             if ctrl_char is not None:
                 return self.process_event(ctrl_char)
             simple_events = just_simple_events(e.events)
-            source = bad_empty_lines_removed(''.join(simple_events))
+            source = add_or_remove_blank_lines(''.join(simple_events))
 
             with self.in_paste_mode():
                 for ee in source:
@@ -716,7 +716,7 @@ class Repl(BpythonRepl):
         text = self.send_to_external_editor(for_editor)
         lines = text.split('\n')
         from_editor = [line for line in lines if line[:4] != '### ']
-        source = bad_empty_lines_removed('\n'.join(from_editor))
+        source = add_or_remove_blank_lines('\n'.join(from_editor))
         self.history = source.split('\n')
         self.reevaluate(insert_into_history=True)
         self.current_line = lines[-1][4:]
@@ -1435,7 +1435,7 @@ def code_finished_will_parse(s):
         code_will_parse = False
     return finished, code_will_parse
 
-def bad_empty_lines_removed(s):
+def add_or_remove_blank_lines(s):
     """Removes empty lines that would cause unfinished input to be evaluated"""
     #  If there's a syntax error followed by an empty line, remove the empty line
     lines = s.split('\n')
@@ -1453,24 +1453,34 @@ def bad_empty_lines_removed(s):
             current_block = []
             continue
         elif could_be_finished and not valid:
-            if complete_blocks:
-                complete_blocks[-1].extend(current_block)
-                current_block = complete_blocks.pop()
-                if len(current_block) < 2:
+            if current_block[-1].startswith(' '):
+                if complete_blocks:
+                    complete_blocks[-1].extend(current_block)
+                    current_block = complete_blocks.pop()
+                    if len(current_block) < 2:
+                        return s #TODO return partial result instead of giving up
+                    last_line = current_block.pop(len(current_block) - 2)
+                    assert not last_line, last_line
+                    new_finished, new_valid = code_finished_will_parse('\n'.join(current_block))
+                    if new_valid and new_finished:
+                        complete_blocks.append(current_block)
+                        current_block = []
+                    elif new_valid:
+                        continue
+                    else:
+                        return s #TODO return partial result instead of giving up
+
+                else:
                     return s #TODO return partial result instead of giving up
-                last_line = current_block.pop(len(current_block) - 2)
-                assert not last_line, last_line
+            else:
+                current_block.pop()
+                current_block.append('')
                 new_finished, new_valid = code_finished_will_parse('\n'.join(current_block))
                 if new_valid and new_finished:
                     complete_blocks.append(current_block)
-                    current_block = []
-                elif new_valid:
-                    continue
+                    current_block = [line]
                 else:
                     return s #TODO return partial result instead of giving up
-
-            else:
-                return s #TODO return partial result instead of giving up
         else:
             continue
     return '\n'.join(['\n'.join(block)

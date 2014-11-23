@@ -44,12 +44,21 @@ class TestInterpreter(unittest.TestCase):
 
 class TestPreprocessing(unittest.TestCase):
     def test_bad_empty_lines_removed(self):
-        self.assertEqual(bad_empty_lines_removed("def foo():\n"
+        self.assertEqual(add_or_remove_blank_lines("def foo():\n"
                                              "    return 1\n"
                                              "\n"
                                              "    pass\n"),
                          "def foo():\n"
                          "    return 1\n"
                          "    pass\n")
+
+    def test_add_line(self):
+        self.assertEqual(add_or_remove_blank_lines("def foo():\n"
+                                             "    return 1\n"
+                                             "1\n"),
+                         "def foo():\n"
+                         "    return 1\n"
+                         "\n",
+                         "1\n")
 
 
